@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python BMI 模擬檢核工具</title>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f5f7f9; }
+        h2 { color: #2c3e50; border-left: 5px solid #3498db; padding-left: 10px; }
+        #editor-container { background: #282c34; border-radius: 8px; padding: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        textarea { width: 100%; height: 300px; font-family: 'Courier New', Courier, monospace; font-size: 14px; background: transparent; color: #abb2bf; border: none; outline: none; resize: vertical; }
+        .controls { margin-top: 15px; display: flex; align-items: center; gap: 15px; }
+        button { background-color: #2ecc71; color: white; border: none; padding: 10px 25px; border-radius: 5px; cursor: pointer; font-size: 16px; transition: 0.3s; }
+        button:hover { background-color: #27ae60; }
+        button:disabled { background-color: #95a5a6; cursor: wait; }
+        #output-container { margin-top: 20px; background: #ffffff; border: 1px solid #dcdfe6; border-radius: 8px; padding: 15px; min-height: 100px; }
+        pre { white-space: pre-wrap; word-wrap: break-word; margin: 0; color: #333; }
+        .status { font-size: 12px; color: #7f8c8d; }
+    </style>
+</head>
+<body>
+
+    <h2>Python 程式碼檢核模擬器</h2>
+    <p>請在下方輸入 Python 程式碼，按「執行程式」觀察結果：</p>
+
+    <div id="editor-container">
+        <textarea id="code" spellcheck="false">
+# 請嘗試撰寫你的 BMI 計算機
+height = 175
+weight = 70
+bmi = weight / ((height/100)**2)
+
+print(f"你的身高: {height} cm")
+print(f"你的體重: {weight} kg")
+print(f"計算出的 BMI 為: {bmi:.2f}")
+
+if bmi < 18.5:
+    print("狀態：體重過輕")
+elif bmi < 24:
+    print("狀態：正常範圍")
+else:
+    print("狀態：過重或肥胖")
+        </textarea>
+    </div>
+
+    <div class="controls">
+        <button id="run-btn" onclick="runPython()">執行程式 (Run)</button>
+        <span id="status-text" class="status">正在初始化 Python 環境...</span>
+    </div>
+
+    <div id="output-container">
+        <strong>執行結果：</strong>
+        <hr>
+        <pre id="output">等待執行...</pre>
+    </div>
+
+    <script>
+        let pyodide;
+
+        // 初始化 Pyodide
+        async function initPyodide() {
+            const statusText = document.getElementById('status-text');
+            try {
+                pyodide = await loadPyodide();
+                statusText.textContent = "環境就緒！";
+                statusText.style.color = "#2ecc71";
+            } catch (err) {
+                statusText.textContent = "環境載入失敗，請檢查網路。";
+            }
+        }
+        initPyodide();
+
+        // 執行 Python 程式碼
+        async function runPython() {
+            const code = document.getElementById('code').value;
+            const output = document.getElementById('output');
+            const btn = document.getElementById('run-btn');
+
+            if (!pyodide) {
+                alert("Python 環境尚未載入完成，請稍候。");
+                return;
+            }
+
+            output.textContent = "執行中...";
+            btn.disabled = true;
+
+            try {
+                // 重導向 Python 的 print 輸出到網頁上
+                pyodide.runPython(`
+                    import sys
+                    import io
+                    sys.stdout = io.StringIO()
+                `);
+
+                await pyodide.runPythonAsync(code);
+                
+                const stdout = pyodide.runPython("sys.stdout.getvalue()");
+                output.textContent = stdout || "程式執行完成（無輸出結果）";
+            } catch (err) {
+                output.textContent = "【程式發生錯誤】\n" + err;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
